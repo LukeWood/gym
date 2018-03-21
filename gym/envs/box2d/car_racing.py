@@ -300,22 +300,28 @@ class CarRacing(gym.Env):
 
     def find_car_beams(self):
         from Box2D import b2RayCastInput, b2RayCastOutput, b2Transform
-
+        from math import pi, cos, sin
         x, y = self.car.hull.position
+        angle = -self.car.hull.angle
+        trajectories = [angle + pi/4, angle - pi/4]
+        closest = [-1, -1]
+        index = 0
+        for trajectory in trajectories:
+            print("Base Angle: %f, Angle: %f, Sin: %f, Cos: %f" % (angle, trajectory, sin(trajectory), cos(trajectory)))
+            start = b2RayCastInput(p1=(x, y),
+                p2=(x+cos(trajectory), y+sin(trajectory)),
+                maxFraction=20)
+            output = b2RayCastOutput()
+            transform = b2Transform()
+            transform.SetIdentity()
 
-        #TODO(lukewood) -> calculate p2
-        start = b2RayCastInput(p1=(x, y), p2=(x+1, y+1), maxFraction=5)
-        output = b2RayCastOutput()
-
-        transform = b2Transform()
-        transform.SetIdentity()
-
-        for shape in self.road_edges:
-            hit = shape.RayCast(output, start, transform, 0)
-            if hit:
-                print(output)
-                print(hit)
-
+            for shape in self.road_edges:
+                hit = shape.RayCast(output, start, transform, 0)
+                if hit:
+                    if closest[index] == -1 or output.fraction < closest[index]:
+                        closest[index] = output.fraction
+            index = index + 1
+        #print(closest)
         return self.render("state_pixels")
 
     def step(self, action):
