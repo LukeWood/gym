@@ -308,8 +308,10 @@ class CarRacing(gym.Env):
         index = 0
         for trajectory in trajectories:
             print("Base Angle: %f, Angle: %f, Sin: %f, Cos: %f" % (angle, trajectory, sin(trajectory), cos(trajectory)))
-            start = b2RayCastInput(p1=(x, y),
-                p2=(x+cos(trajectory), y+sin(trajectory)),
+            start_point = (x, y)
+            end_point =(x+cos(trajectory), y+sin(trajectory))
+            start = b2RayCastInput(p1=start_point,
+                p2=end_point,
                 maxFraction=20)
             output = b2RayCastOutput()
             transform = b2Transform()
