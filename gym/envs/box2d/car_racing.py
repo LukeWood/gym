@@ -303,13 +303,14 @@ class CarRacing(gym.Env):
         from math import pi, cos, sin
         x, y = self.car.hull.position
         angle = -self.car.hull.angle
-        trajectories = [angle + pi/4, angle - pi/4]
+        trajectories = [angle - pi/4, angle + pi/4]
         closest = [-1, -1]
         index = 0
         for trajectory in trajectories:
-            print("Base Angle: %f, Angle: %f, Sin: %f, Cos: %f" % (angle, trajectory, sin(trajectory), cos(trajectory)))
+            #print("Base Angle: %f, Angle: %f, Sin: %f, Cos: %f" % (angle, trajectory, sin(trajectory), cos(trajectory)))
             start_point = (x, y)
-            end_point =(x+cos(trajectory), y+sin(trajectory))
+            end_point =(x+cos(trajectory), y-sin(trajectory))
+            #print(start_point, end_point)
             start = b2RayCastInput(p1=start_point,
                 p2=end_point,
                 maxFraction=20)
@@ -323,7 +324,7 @@ class CarRacing(gym.Env):
                     if closest[index] == -1 or output.fraction < closest[index]:
                         closest[index] = output.fraction
             index = index + 1
-        #print(closest)
+        print(closest)
         return self.render("state_pixels")
 
     def step(self, action):
