@@ -3,6 +3,7 @@ import numpy as np
 
 import Box2D
 from Box2D.b2 import (edgeShape, circleShape, fixtureDef, polygonShape, revoluteJointDef, contactListener)
+from Box2D import b2EdgeShape
 
 import gym
 from gym import spaces
@@ -289,7 +290,36 @@ class CarRacing(gym.Env):
             print("retry to generate track (normal if there are not many of this messages)")
         self.car = Car(self.world, *self.track[0][1:4])
 
+        self.road_edges = []
+        for poly in self.road_poly:
+            shape = b2EdgeShape()
+            shape.vertices = poly[0]
+            self.road_edges.append(shape)
+
         return self.step(None)[0]
+
+    def find_car_beams(self):
+        from Box2D import b2RayCastInput, b2RayCastOutput, b2Transform
+
+        # HOORAH !!! Box2d actually can do this for us.
+        # Google:  Box2d world find collision point python
+
+        #https://github.com/pybox2d/pybox2d/wiki/manual
+        # collision/shape ray cast appears to be what we are looking for.
+        x, y = self.car.hull.position
+        start = b2RayCastInput(p1=(x, y), p2=(x+1, y+1), maxFraction=1)
+        output = b2RayCastOutput()
+
+        transform = b2Transform()
+        transform.SetIdentity()
+
+        for shape in self.road_edges:
+            hit = shape.RayCast(output, start, transform, 0)
+            if hit:
+                print(output)
+                print(hit)
+
+        return self.render("state_pixels")
 
     def step(self, action):
         if action is not None:
@@ -301,7 +331,7 @@ class CarRacing(gym.Env):
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
-        self.state = self.render("state_pixels")
+        self.state = self.find_car_beams()
 
         step_reward = 0
         done = False
