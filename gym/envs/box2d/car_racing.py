@@ -301,13 +301,10 @@ class CarRacing(gym.Env):
     def find_car_beams(self):
         from Box2D import b2RayCastInput, b2RayCastOutput, b2Transform
 
-        # HOORAH !!! Box2d actually can do this for us.
-        # Google:  Box2d world find collision point python
-
-        #https://github.com/pybox2d/pybox2d/wiki/manual
-        # collision/shape ray cast appears to be what we are looking for.
         x, y = self.car.hull.position
-        start = b2RayCastInput(p1=(x, y), p2=(x+1, y+1), maxFraction=1)
+
+        #TODO(lukewood) -> calculate p2
+        start = b2RayCastInput(p1=(x, y), p2=(x+1, y+1), maxFraction=5)
         output = b2RayCastOutput()
 
         transform = b2Transform()
