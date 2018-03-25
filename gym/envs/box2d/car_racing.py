@@ -331,8 +331,7 @@ class CarRacing(gym.Env):
                     if closest[index] == -1 or output.fraction < closest[index]:
                         closest[index] = output.fraction
             index = index + 1
-        print(closest)
-        return self.render("state_pixels")
+        return closest
 
     def step(self, action):
         if action is not None:
@@ -447,7 +446,7 @@ class CarRacing(gym.Env):
         beams = self.beams
         for p1, p2, p3, p4 in beams:
             gl.glBegin(gl.GL_QUADS)
-            gl.glColor4f(0.0, 1.0, 0.0, 1)
+            gl.glColor4f(0.0, 0.0, 1.0, 1)
             gl.glVertex3f(p1[0],    p1[1],        0)
             gl.glVertex3f(p2[0],    p2[1],        0)
             gl.glVertex3f(p3[0],    p3[1],        0)
@@ -469,14 +468,8 @@ class CarRacing(gym.Env):
                 gl.glVertex3f(k*x + 0, k*y + 0, 0)
                 gl.glVertex3f(k*x + 0, k*y + k, 0)
                 gl.glVertex3f(k*x + k, k*y + k, 0)
-        num = 0
         for poly, color in self.road_poly:
-            num+=1
-            if num % 2 == 0:
-                gl.glColor4f(0, 1, 1, 1)
-            else:
-                gl.glColor4f(1, 1, 0, 1)
-            #gl.glColor4f(color[0], color[1], color[2], 1)
+            gl.glColor4f(color[0], color[1], color[2], 1)
             for p in poly:
                 gl.glVertex3f(p[0], p[1], 0)
         gl.glEnd()
