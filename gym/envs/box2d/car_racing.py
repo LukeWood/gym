@@ -283,7 +283,7 @@ class CarRacing(gym.Env):
         self.t = 0.0
         self.road_poly = []
         self.human_render = False
-
+        self.beams = []
         while True:
             success = self._create_track()
             if success: break
@@ -291,9 +291,13 @@ class CarRacing(gym.Env):
         self.car = Car(self.world, *self.track[0][1:4])
 
         self.road_edges = []
-        for poly in self.road_poly:
+        for poly, color in self.road_poly:
+            p1, p2, p3, p4 = poly
             shape = b2EdgeShape()
-            shape.vertices = poly[0]
+            shape.vertices = (p1, p4)
+            self.road_edges.append(shape)
+            shape = b2EdgeShape()
+            shape.vertices = (p2, p3)
             self.road_edges.append(shape)
 
         return self.step(None)[0]
@@ -303,17 +307,20 @@ class CarRacing(gym.Env):
         from math import pi, cos, sin
         x, y = self.car.hull.position
         angle = -self.car.hull.angle
-        trajectories = [angle - pi/4, angle + pi/4]
-        closest = [-1, -1]
+        trajectories = [angle - 3*pi/4,angle - pi/4]
+        closest = [-1] * len(trajectories)
         index = 0
+        self.beams = []
         for trajectory in trajectories:
-            #print("Base Angle: %f, Angle: %f, Sin: %f, Cos: %f" % (angle, trajectory, sin(trajectory), cos(trajectory)))
             start_point = (x, y)
-            end_point =(x+cos(trajectory), y-sin(trajectory))
-            #print(start_point, end_point)
+            p2 = (x+cos(trajectory), y)
+            p4 = (x, y - sin(trajectory))
+            end_point =(x+10*cos(trajectory), y-10*sin(trajectory))
+
+            self.beams.append((start_point,p2, end_point, p4))
             start = b2RayCastInput(p1=start_point,
                 p2=end_point,
-                maxFraction=20)
+                maxFraction=3)
             output = b2RayCastOutput()
             transform = b2Transform()
             transform.SetIdentity()
@@ -421,6 +428,7 @@ class CarRacing(gym.Env):
             gl.glViewport(int(WINDOW_W/2), int(WINDOW_H/2), WINDOW_W, WINDOW_H)
             t.enable()
             self.render_road()
+            self.render_beams()
             for geom in self.viewer.onetime_geoms:
                 geom.render()
             t.disable()
@@ -434,6 +442,17 @@ class CarRacing(gym.Env):
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
+
+    def render_beams(self):
+        beams = self.beams
+        for p1, p2, p3, p4 in beams:
+            gl.glBegin(gl.GL_QUADS)
+            gl.glColor4f(0.0, 1.0, 0.0, 1)
+            gl.glVertex3f(p1[0],    p1[1],        0)
+            gl.glVertex3f(p2[0],    p2[1],        0)
+            gl.glVertex3f(p3[0],    p3[1],        0)
+            gl.glVertex3f(p4[0],    p4[1],        0)
+            gl.glEnd()
 
     def render_road(self):
         gl.glBegin(gl.GL_QUADS)
@@ -450,8 +469,14 @@ class CarRacing(gym.Env):
                 gl.glVertex3f(k*x + 0, k*y + 0, 0)
                 gl.glVertex3f(k*x + 0, k*y + k, 0)
                 gl.glVertex3f(k*x + k, k*y + k, 0)
+        num = 0
         for poly, color in self.road_poly:
-            gl.glColor4f(color[0], color[1], color[2], 1)
+            num+=1
+            if num % 2 == 0:
+                gl.glColor4f(0, 1, 1, 1)
+            else:
+                gl.glColor4f(1, 1, 0, 1)
+            #gl.glColor4f(color[0], color[1], color[2], 1)
             for p in poly:
                 gl.glVertex3f(p[0], p[1], 0)
         gl.glEnd()
