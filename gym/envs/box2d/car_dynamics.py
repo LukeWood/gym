@@ -49,6 +49,8 @@ MUD_COLOR   = (0.4,0.4,0.0)
 class Car:
     def __init__(self, world, init_angle, init_x, init_y):
         self.world = world
+        self.one_wheel_on_grass = False
+        self.grass = False
         self.hull = self.world.CreateDynamicBody(
             position = (init_x, init_y),
             angle = init_angle,
@@ -110,9 +112,10 @@ class Car:
         'control: rear wheel drive'
         gas = np.clip(gas, 0, 1)
         for w in self.wheels[2:4]:
-            diff = gas - w.gas
-            if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
-            w.gas += diff
+            #diff = gas - w.gas
+            #if diff > 0.1: diff = 0.1  # gradually increase, but stop immediately
+            #w.gas += diff
+            w.gas = 0.2
 
     def brake(self, b):
         'control: brake b=0..1, more than 0.9 blocks wheels to zero rotation'
@@ -125,6 +128,7 @@ class Car:
         self.wheels[1].steer = s
 
     def step(self, dt):
+        self.one_wheel_on_grass = False
         for w in self.wheels:
             # Steer each wheel
             dir = np.sign(w.steer - w.joint.angle)
@@ -132,11 +136,13 @@ class Car:
             w.joint.motorSpeed = dir*min(50.0*val, 3.0)
 
             # Position => friction_limit
-            grass = True
+            self.grass = True
             friction_limit = FRICTION_LIMIT*0.6  # Grass friction if no tile
             for tile in w.tiles:
                 friction_limit = max(friction_limit, FRICTION_LIMIT*tile.road_friction)
-                grass = False
+                self.grass = False
+            if(len(w.tiles) == 0):
+                self.one_wheel_on_grass = True
 
             # Force
             forw = w.GetWorldVector( (0,1) )
@@ -173,12 +179,12 @@ class Car:
 
             # Skid trace
             if abs(force) > 2.0*friction_limit:
-                if w.skid_particle and w.skid_particle.grass==grass and len(w.skid_particle.poly) < 30:
+                if w.skid_particle and w.skid_particle.grass==self.grass and len(w.skid_particle.poly) < 30:
                     w.skid_particle.poly.append( (w.position[0], w.position[1]) )
                 elif w.skid_start is None:
                     w.skid_start = w.position
                 else:
-                    w.skid_particle = self._create_particle( w.skid_start, w.position, grass )
+                    w.skid_particle = self._create_particle( w.skid_start, w.position, self.grass )
                     w.skid_start = None
             else:
                 w.skid_start = None

@@ -115,6 +115,8 @@ class BinaryCarRacing(gym.Env):
 
     def __init__(self):
         self.negative_consecutive = 0
+        self.num_off_track = 0
+        self.prev_diff = 0
         self.seed()
         self.contactListener_keepref = FrictionDetector(self)
         self.world = Box2D.b2World((0,0), contactListener=self.contactListener_keepref)
@@ -285,6 +287,7 @@ class BinaryCarRacing(gym.Env):
 
     def reset(self):
         self.negative_consecutive = 0
+        self.num_off_track = 0
         self._destroy()
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -316,7 +319,7 @@ class BinaryCarRacing(gym.Env):
         from math import pi, cos, sin
         x, y = self.car.hull.position
         angle = -self.car.hull.angle
-        trajectories = [angle - 3*pi/4,angle - pi/2, angle - pi/4, angle + pi, angle]
+        trajectories = [angle + pi, angle]#[angle - 3*pi/4,angle - pi/2, angle - pi/4, angle + pi, angle]
         closest = [-1] * len(trajectories)
         index = 0
         self.beams = []
@@ -345,8 +348,10 @@ class BinaryCarRacing(gym.Env):
     def step(self, action):
         if action is not None:
             self.car.steer(-action[0])
-            self.car.gas(action[1])
-            self.car.brake(action[2])
+            #self.car.gas(action[1])
+            #self.car.brake(action[2])
+
+        self.car.gas([0,1])
 
         self.car.step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
@@ -357,24 +362,33 @@ class BinaryCarRacing(gym.Env):
         step_reward = 0
         done = False
         if action is not None: # First step without action, called from reset()
-            self.reward -= .1
             # We actually don't want to count fuel spent, we want car to be faster.
             #self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
             self.car.fuel_spent = 0.0
-            step_reward = self.reward - self.prev_reward
+
             self.prev_reward = self.reward
+            self.curr_diff = abs(self.state[1]-self.state[0])
+            self.reward -= self.curr_diff - self.prev_diff
+            print("##" + str(self.curr_diff - self.prev_diff))
+            self.prev_diff = abs(self.state[1]-self.state[0])
             if self.tile_visited_count==len(self.track):
                 done = True
             x, y = self.car.hull.position
-            if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+            #if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+            #    done = True
+            #    step_reward = -100
+            #if self.reward < -5:
+            #    step_reward = -10
+            #    done = True
+            if self.car.one_wheel_on_grass:
+                #if(self.num_off_track == 0):
+                #    self.reward -= 50
+                self.num_off_track += 1
+            else:
+                self.num_off_track = 0
+            if self.num_off_track == 1:
                 done = True
-                step_reward = -100
-            if self.reward < -5:
-                step_reward = -10
-                done = True
-            if -1 in self.state:
-                step_reward = -10
-                done = True
+            step_reward = self.reward - self.prev_reward
         return self.state, step_reward, done, {}
 
     def render(self, mode='human'):
