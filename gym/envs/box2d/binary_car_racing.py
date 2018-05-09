@@ -319,7 +319,7 @@ class BinaryCarRacing(gym.Env):
         from math import pi, cos, sin
         x, y = self.car.hull.position
         angle = -self.car.hull.angle
-        trajectories = [angle + pi, angle]#[angle - 3*pi/4,angle - pi/2, angle - pi/4, angle + pi, angle]
+        trajectories = [angle - 3*pi/4,angle - pi/2, angle - pi/4, angle + pi, angle]
         closest = [-1] * len(trajectories)
         index = 0
         self.beams = []
@@ -348,16 +348,20 @@ class BinaryCarRacing(gym.Env):
     def step(self, action):
         if action is not None:
             self.car.steer(-action[0])
-            #self.car.gas(action[1])
-            #self.car.brake(action[2])
+            self.car.gas(action[1])
+            self.car.brake(action[2])
 
-        self.car.gas([0,1])
-
+        self.prev_reward = self.reward
         self.car.step(1.0/FPS)
         self.world.Step(1.0/FPS, 6*30, 2*30)
         self.t += 1.0/FPS
 
         self.state = self.find_car_beams()
+
+        self.curr_diff = abs(self.state[1]-self.state[0])
+        diff_in_centeredness = self.prev_diff - self.curr_diff 
+        #print("##" + str(self.curr_diff - self.prev_diff))
+        self.prev_diff = abs(self.state[1]-self.state[0])
 
         step_reward = 0
         done = False
@@ -366,30 +370,26 @@ class BinaryCarRacing(gym.Env):
             #self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
             self.car.fuel_spent = 0.0
 
-            self.prev_reward = self.reward
-            self.curr_diff = abs(self.state[1]-self.state[0])
-            self.reward -= self.curr_diff - self.prev_diff
-            print("##" + str(self.curr_diff - self.prev_diff))
-            self.prev_diff = abs(self.state[1]-self.state[0])
+            #self.prev_reward = self.reward
+            #self.curr_diff = abs(self.state[1]-self.state[0])
+            #self.reward -= self.curr_diff - self.prev_diff
+            #self.prev_diff = abs(self.state[1]-self.state[0])
             if self.tile_visited_count==len(self.track):
                 done = True
             x, y = self.car.hull.position
-            #if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
-            #    done = True
-            #    step_reward = -100
-            #if self.reward < -5:
-            #    step_reward = -10
-            #    done = True
+
             if self.car.one_wheel_on_grass:
-                #if(self.num_off_track == 0):
-                #    self.reward -= 50
+                if(self.num_off_track == 0):
+                    self.reward -= 50
                 self.num_off_track += 1
             else:
+                if(self.num_off_track != 0):
+                    self.reward += 50
                 self.num_off_track = 0
-            if self.num_off_track == 1:
+            if self.num_off_track == 20:
                 done = True
             step_reward = self.reward - self.prev_reward
-        return self.state, step_reward, done, {}
+        return self.state, step_reward-diff_in_centeredness, done, {}
 
     def render(self, mode='human'):
         if self.viewer is None:
